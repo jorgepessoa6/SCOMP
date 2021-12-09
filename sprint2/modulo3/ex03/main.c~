@@ -1,0 +1,104 @@
+#include <fcntl.h> /* For constants O_* */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h> /* For constants “mode” */
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <time.h>
+#include <unistd.h>
+
+typedef struct{
+	int canRead;
+	int a[];
+} sharedDataType;
+
+int randomNumber(){
+	int randomNumber = (rand() % 10) + 0;
+	return randomNumber;
+}
+
+int main() {
+
+    char *SHARED_FILE = "/ex03";
+    const int DATA_SIZE = sizeof(sharedDataType);
+    const int NUMBER_OF_OPERATIONS = 100000;
+
+    // 1. Creates and opens a shared memory area
+    int fd = shm_open(SHARED_FILE, O_EXCL | O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+    if (fd == -1) {
+        printf("Error at shm_open()!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // 2. Defines the size
+    ftruncate(fd, DATA_SIZE);
+
+    // 3. Get a pointer to the data
+    sharedDataType *sharedData;
+    sharedData = (sharedDataType *)mmap(NULL, DATA_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	
+	// Initialize array 
+	int i; 
+	for (i = 0; i < NUMBER_OF_OPERATIONS; i++) {  
+		sharedData->a[i] = randomNumber(); 
+	}
+	
+    // Start timer
+    clock_t before = clock();
+    
+    // Create a new process
+    pid_t pid = fork();
+
+    // If we are at the father
+    if (pid > 0) {
+
+    	sharedData->canRead=1;
+    	wait(NULL);
+    }
+
+    // If we are at the child
+    if (pid == 0) {
+    	while(!sharedData->canRead);
+		int b[100000];
+		
+    	// Initialize array
+    	int i;
+    	for (i = 0; i < NUMBER_OF_OPERATIONS; i++) {
+    		b[i] = sharedData->a[i];
+    	}
+
+       	//Stop timer
+    	clock_t difference = clock() - before;
+
+        printf("\nShared Memory Time: %d", (int)difference);
+        
+    }
+    
+	// Undo mapping
+    if (munmap((void *)sharedData, DATA_SIZE) < 0) {
+        printf("Error at munmap()!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Close file descriptor
+    if (close(fd) < 0) {
+        printf("Error at close()!\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    
+    if(pid == 0){
+        // Remove file from system
+        if (shm_unlink(SHARED_FILE) < 0)
+        {
+            perror("Error at unlink");
+            exit(EXIT_FAILURE);
+        }
+    }
+    
+	
+    return EXIT_SUCCESS;
+
+}

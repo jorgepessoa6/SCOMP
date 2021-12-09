@@ -1,0 +1,39 @@
+# ------------------------------ Variáveis -------------------------------------
+# ------------------------------------------------------------------------------
+
+# ficheiros de com extensão ".h" que vão para o INCLUDES
+INCLUDES =
+
+# ficheiros de com extensão ".c" ou ".s" que vão para o SOURCES
+SOURCES = main.c
+
+# ficheiros de com extensão ".o" que vão para o OBJFILES
+OBJFILES = main.o 
+
+# Nome do executavel. Não precisa de ter .exe
+# Sigestão: "ex1" para o exercício 1, "ex2" para o exercício 2, ...
+EXEC = program.exe
+
+# ------------------------------------------------------------------------------
+# --------------------------------- Regras -------------------------------------
+# ------------------------------------------------------------------------------
+
+# regras de sufixo
+.SUFFIXES : .c .o
+# como transformar um .c num .o ; $< -- nome do ficheiro
+.c.o:
+	gcc -Wall -g -c $<
+
+${EXEC}: ${OBJFILES}
+	gcc -Wall -g -o ${EXEC} ${OBJFILES}
+
+${OBJFILES}: ${SOURCES} ${INCLUDES}
+
+run:  ${EXEC}
+	./${EXEC}
+
+debug:  ${EXEC}
+		gdb -tui ${EXEC}
+
+clean:
+	rm ${OBJFILES} ${EXEC} # tambem podes usar " rm -f ${OBJFILES} ${EXEC} "
